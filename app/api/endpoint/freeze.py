@@ -61,6 +61,14 @@ async def create_freeze(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot freeze price for a flight that has already departed",
         )
+    existing = await freeze_crud.get_active_for_user_flight(
+        db, user_id=current_user.id, flight_id=flight.id
+    )
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Active freeze already exists for this flight; wait until it expires or delete it.",
+        )
     freeze = await freeze_crud.create_for_flight(
         db,
         user_id=current_user.id,

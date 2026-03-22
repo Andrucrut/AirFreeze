@@ -17,6 +17,9 @@ class User(Base):
 
     freezes: Mapped[list["Freeze"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     bookings: Mapped[list["Booking"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    payment_methods: Mapped[list["PaymentMethod"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     search_history: Mapped[list["SearchHistory"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )

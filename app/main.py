@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.endpoint import admin, auth, booking, flights, freeze, searches, users
+from app.api.endpoint import admin, auth, booking, flights, freeze, payment_methods, searches, users
 from app.core.config import cors_allow_origins, settings
 
 
@@ -28,6 +28,7 @@ def create_app() -> FastAPI:
     app.include_router(searches.router)
     app.include_router(freeze.router)
     app.include_router(booking.router)
+    app.include_router(payment_methods.router)
 
     # Без этого браузер с localhost:3000 получает 405 на OPTIONS (preflight) и логин с фронта не работает
     app.add_middleware(

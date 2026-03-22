@@ -20,21 +20,67 @@ class BookingCRUD(CRUDRepository[Booking]):
         user_id: int,
         flight: Flight,
     ) -> tuple[Booking, float]:
+        """
+        Сумма к оплате: при активной заморозке — min(каталог, frozen), иначе цена рейса.
+        Заморозка снимается только после успешной оплаты (mark_paid).
+        """
         active = await freeze_crud.get_active_for_user_flight(
             session, user_id=user_id, flight_id=flight.id
         )
-        price = float(active.frozen_price) if active else float(flight.price)
+        current = float(flight.price)
+        if active is not None:
+            frozen = float(active.frozen_price)
+            price = min(current, frozen)
+        else:
+            price = current
+
         booking = Booking(
             user_id=user_id,
             flight_id=flight.id,
             price_paid=price,
-            status="confirmed",
+            status="pending_payment",
             created_at=datetime.now(timezone.utc),
+            paid_at=None,
+            payment_method_id=None,
         )
         session.add(booking)
         await session.flush()
         await session.refresh(booking)
         return booking, price
+
+    async def get_pending_for_user_flight(
+        self,
+        session: AsyncSession,
+        user_id: int,
+        flight_id: int,
+    ) -> Booking | None:
+        result = await session.execute(
+            select(Booking).where(
+                Booking.user_id == user_id,
+                Booking.flight_id == flight_id,
+                Booking.status == "pending_payment",
+            )
+        )
+        return result.scalars().first()
+
+    async def mark_paid(
+        self,
+        session: AsyncSession,
+        booking: Booking,
+        *,
+        payment_method_id: int,
+    ) -> Booking:
+        booking.status = "confirmed"
+        booking.paid_at = datetime.now(timezone.utc)
+        booking.payment_method_id = payment_method_id
+        await session.flush()
+        active = await freeze_crud.get_active_for_user_flight(
+            session, user_id=booking.user_id, flight_id=booking.flight_id
+        )
+        if active is not None:
+            await freeze_crud.delete(session, active)
+        await session.refresh(booking)
+        return booking
 
     async def list_for_user(self, session: AsyncSession, user_id: int) -> list[Booking]:
         result = await session.execute(
