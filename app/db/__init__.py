@@ -1,6 +1,5 @@
-"""Database engine, session factory, and declarative metadata base."""
+"""Database metadata base. Engine/session: `app.db.session`."""
 
 from app.db.base import Base
-from app.db.session import async_session_maker, get_async_session
 
-__all__ = ("Base", "async_session_maker", "get_async_session")
+__all__ = ("Base",)

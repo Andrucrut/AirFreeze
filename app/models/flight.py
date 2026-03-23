@@ -16,6 +16,7 @@ class Flight(Base):
     arrival_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     price: Mapped[float] = mapped_column(Float, nullable=False)
     stops: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_price_refresh_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     freezes: Mapped[list["Freeze"]] = relationship(back_populates="flight", cascade="all, delete-orphan")
     bookings: Mapped[list["Booking"]] = relationship(back_populates="flight", cascade="all, delete-orphan")

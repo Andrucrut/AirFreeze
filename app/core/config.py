@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _to_asyncpg_url(url: str) -> str:
-    """Railway/Render/Vercel Postgres часто отдают postgres:// или postgresql:// без +asyncpg."""
+    """Normalize postgres URL from cloud providers to asyncpg dialect."""
     u = url.strip()
     if u.startswith("postgresql+asyncpg://"):
         return u
@@ -35,8 +35,8 @@ class Settings(BaseSettings):
             return _to_asyncpg_url(v)
         return v
 
-    # Через запятую; переменная окружения CORS_ORIGINS (см. .env.example)
     cors_origins: str = ""
+    api_base_url: str = "http://localhost:8000"
 
     secret_key: str = "change-me-in-production-use-openssl-rand-hex-32"
     algorithm: str = "HS256"
@@ -44,8 +44,13 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     freeze_ttl_hours: int = 24
+    freeze_fee_rub: float = 30.0
 
-    # If set, the first newly created account with this email becomes admin (one-time bootstrap).
+    # Daily dynamic pricing: absolute change in rubles.
+    daily_price_change_min_rub: int = 50
+    daily_price_change_max_rub: int = 200
+
+    # If set, the first newly created account with this email becomes admin.
     bootstrap_admin_email: str | None = None
 
 
