@@ -1,11 +1,9 @@
 from datetime import date, datetime, time, timezone
-from random import Random
 from typing import Literal
 
 from sqlalchemy import and_, asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.db_crud.base import CRUDRepository
 from app.models.flight import Flight
 
@@ -34,7 +32,6 @@ class FlightCRUD(CRUDRepository[Flight]):
         q = q.order_by(Flight.departure_time.asc()).offset(skip).limit(limit)
         total = int((await session.execute(count_q)).scalar_one())
         rows = list((await session.execute(q)).scalars().all())
-        await self.refresh_prices_if_needed(session, rows)
         return rows, total
 
     async def create(
@@ -55,7 +52,6 @@ class FlightCRUD(CRUDRepository[Flight]):
             arrival_time=arrival_time,
             price=price,
             stops=stops,
-            last_price_refresh_at=datetime.now(timezone.utc),
         )
         session.add(flight)
         await session.flush()
@@ -86,8 +82,6 @@ class FlightCRUD(CRUDRepository[Flight]):
             flight.price = price
         if stops is not None:
             flight.stops = stops
-        # Manual admin update means this value is already "today's current" one.
-        flight.last_price_refresh_at = datetime.now(timezone.utc)
         await session.flush()
         await session.refresh(flight)
         return flight
@@ -133,42 +127,7 @@ class FlightCRUD(CRUDRepository[Flight]):
 
         stmt = select(Flight).where(and_(*conditions)).order_by(order_fn(order_col))
         result = await session.execute(stmt)
-        rows = list(result.scalars().all())
-        await self.refresh_prices_if_needed(session, rows)
-        return rows
-
-    async def get_by_id(self, session: AsyncSession, obj_id: int) -> Flight | None:  # type: ignore[override]
-        flight = await super().get_by_id(session, obj_id)
-        if flight is None:
-            return None
-        await self.refresh_prices_if_needed(session, [flight])
-        return flight
-
-    async def refresh_prices_if_needed(self, session: AsyncSession, flights: list[Flight]) -> None:
-        now = datetime.now(timezone.utc)
-        changed = False
-        for flight in flights:
-            if flight.departure_time <= now:
-                continue
-            if (
-                flight.last_price_refresh_at is not None
-                and flight.last_price_refresh_at.date() >= now.date()
-            ):
-                continue
-            self._apply_daily_change(flight, now)
-            changed = True
-        if changed:
-            await session.flush()
-
-    @staticmethod
-    def _apply_daily_change(flight: Flight, now: datetime) -> None:
-        # Deterministic per (flight_id, day): one change per day for each flight.
-        seed = (flight.id * 10_000_019) ^ now.date().toordinal()
-        rng = Random(seed)
-        delta = float(rng.randint(settings.daily_price_change_min_rub, settings.daily_price_change_max_rub))
-        direction = -1.0 if rng.random() < 0.5 else 1.0
-        flight.price = round(max(1.0, float(flight.price) + direction * delta), 2)
-        flight.last_price_refresh_at = now
+        return list(result.scalars().all())
 
 
 flight_crud = FlightCRUD()

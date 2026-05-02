@@ -12,7 +12,6 @@ class FreezeOut(SchemaBase):
     user_id: int
     flight_id: int
     frozen_price: float
-    freeze_fee_paid: float
     expires_at: datetime
 
 

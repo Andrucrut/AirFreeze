@@ -23,7 +23,6 @@ async def list_flights_catalog(
     rows, total = await flight_crud.list_paginated(
         db, skip=skip, limit=limit, from_city=from_city, to_city=to_city
     )
-    await db.commit()
     return FlightListOut(
         items=[FlightOut.model_validate(f) for f in rows],
         total=total,
@@ -74,8 +73,6 @@ async def search_flights(
             result_count=len(flights),
         )
         await db.commit()
-    else:
-        await db.commit()
     return [FlightOut.model_validate(f) for f in flights]
 
 
@@ -87,5 +84,4 @@ async def get_flight(
     flight = await flight_crud.get_by_id(db, flight_id)
     if flight is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Flight not found")
-    await db.commit()
     return FlightOut.model_validate(flight)

@@ -80,7 +80,6 @@ async def admin_list_flights(
     rows, total = await flight_crud.list_paginated(
         db, skip=skip, limit=limit, from_city=from_city, to_city=to_city
     )
-    await db.commit()
     return FlightListOut(
         items=[FlightOut.model_validate(f) for f in rows],
         total=total,

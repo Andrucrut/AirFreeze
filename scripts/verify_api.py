@@ -118,25 +118,17 @@ def main() -> None:
         catalog = r.json()
         if "items" not in catalog or not catalog["items"]:
             fail("GET /flights: empty catalog (need seed/migration)")
-        now_utc = datetime.now(timezone.utc)
-        target_item = None
-        for item in catalog["items"]:
-            dep_i = datetime.fromisoformat(item["departure_time"].replace("Z", "+00:00"))
-            if dep_i > now_utc:
-                target_item = item
-                break
-        if target_item is None:
-            fail("GET /flights: no future flights found")
-
-        flight_id = target_item["id"]
-        dep = datetime.fromisoformat(target_item["departure_time"].replace("Z", "+00:00"))
+        flight_id = catalog["items"][0]["id"]
+        dep = datetime.fromisoformat(
+            catalog["items"][0]["departure_time"].replace("Z", "+00:00")
+        )
         search_date = dep.date()
 
         r = client.get(
             "/flights/search",
             params={
-                "from_city": target_item["from_city"],
-                "to_city": target_item["to_city"],
+                "from_city": catalog["items"][0]["from_city"],
+                "to_city": catalog["items"][0]["to_city"],
                 "date": search_date.isoformat(),
                 "passengers": 1,
             },
@@ -148,8 +140,8 @@ def main() -> None:
             "/flights/search",
             headers=user_h,
             params={
-                "from_city": target_item["from_city"],
-                "to_city": target_item["to_city"],
+                "from_city": catalog["items"][0]["from_city"],
+                "to_city": catalog["items"][0]["to_city"],
                 "date": search_date.isoformat(),
                 "passengers": 2,
                 "sort_by": "price",
@@ -284,7 +276,7 @@ def main() -> None:
 
         booking2_id = r.json()["id"]
 
-        r = client.post("/freeze", headers=user_h, json={"flight_id": new_fid})
+        r = client.post("/freeze", headers=user_h, json={"flight_id": flight_id})
         if r.status_code != 201:
             fail(f"second freeze: {r.status_code} {r.text}")
         freeze_extra_id = r.json()["id"]

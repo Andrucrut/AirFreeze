@@ -21,14 +21,18 @@ class BookingCRUD(CRUDRepository[Booking]):
         flight: Flight,
     ) -> tuple[Booking, float]:
         """
-        Booking price rules:
-        - with active freeze: always use frozen_price
-        - without freeze: use current flight price
+        Сумма к оплате: при активной заморозке — min(каталог, frozen), иначе цена рейса.
+        Заморозка снимается только после успешной оплаты (mark_paid).
         """
         active = await freeze_crud.get_active_for_user_flight(
             session, user_id=user_id, flight_id=flight.id
         )
-        price = float(active.frozen_price) if active is not None else float(flight.price)
+        current = float(flight.price)
+        if active is not None:
+            frozen = float(active.frozen_price)
+            price = min(current, frozen)
+        else:
+            price = current
 
         booking = Booking(
             user_id=user_id,

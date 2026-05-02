@@ -26,7 +26,6 @@ class FreezeCRUD(CRUDRepository[Freeze]):
             user_id=user_id,
             flight_id=flight_id,
             frozen_price=price_at_freeze,
-            freeze_fee_paid=float(settings.freeze_fee_rub),
             expires_at=expires,
         )
         session.add(row)
